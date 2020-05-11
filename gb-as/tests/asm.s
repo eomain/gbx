@@ -3,7 +3,6 @@
 _start: ; program entry point
     ; disable interrupts
     di
-    ei
     ; no operation
     nop
 fini:
