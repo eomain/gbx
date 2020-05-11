@@ -160,6 +160,18 @@ fn byte(parser: &mut Parser) -> Result<u8, ()>
     }
 }
 
+#[inline]
+fn comma(parser: &mut Parser) -> Result<(), ()>
+{
+    match parser.ahead() {
+        Some(Token::Comma) => {
+            parser.next();
+            Ok(())
+        },
+        _ => return Err(())
+    }
+}
+
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
 {
     let mut program = Vec::new();
@@ -213,6 +225,8 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                             },
                             _ => return Err(())
                         };
+
+                        comma(&mut parser)?;
 
                         let byte = byte(&mut parser)?;
 
