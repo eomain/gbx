@@ -1,0 +1,8 @@
+[package]
+name = "gb-as"
+version = "0.1.0"
+authors = ["eomain"]
+edition = "2018"
+
+[dependencies]
+clap = "~2.27.0"

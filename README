@@ -1,0 +1,27 @@
+gbx: (2020)
+
+gbx is a custom (unofficial) toolchain for the Game Boy. It is intended to
+enable the development of game software via use of a custom assembly language,
+tailored towards the Game Boy hardware.
+
+As of now, gbx is in its early stages and does not have a stable release. Some
+features that may be missing are still in development.
+
+Eventual Components of the toolchain:
+    An assembler (gb-as)
+    A disassemble (gb-dis)
+    A linker (gb-ld)
+
+
+Sample program:
+
+.text ; begin text segment
+
+_start: ; start of program
+    nop ; no operation
+
+Build:
+    cargo build --release
+
+Basic usage:
+    gb-as game.s -o rom.bin
