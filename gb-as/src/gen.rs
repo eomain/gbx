@@ -37,8 +37,20 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
                         w.write(&[byte])?;
                     },
                     Fill(size, byte) => {
-                        let bytes = vec![*byte; *size];
-                        w.write(bytes.as_slice())?;
+                        const MAX: usize = 0xFF;
+                        if *size <= MAX {
+                            let bytes = vec![*byte; *size];
+                            w.write(bytes.as_slice())?;
+                        } else {
+                            let bytes = vec![*byte; MAX];
+                            let times = size / MAX;
+                            let rem = size % MAX;
+                            for n in 1..=times {
+                                w.write(&bytes)?;
+                            }
+                            let bytes = vec![*byte; rem];
+                            w.write(&bytes)?;
+                        }
                     }
                 }
             },
