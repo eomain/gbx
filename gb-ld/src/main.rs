@@ -10,7 +10,7 @@ use clap::{
 
 fn main()
 {
-    let mut app = App::new("gbld")
+    let mut app = App::new("gb-ld")
         .about("Game Boy linker")
         .version(env!("CARGO_PKG_VERSION"));
 
