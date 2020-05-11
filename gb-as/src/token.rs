@@ -233,6 +233,48 @@ fn base_2(c: char) -> bool
     (c == '0' || c == '1')
 }
 
+fn binary(tokenizer: &mut Tokenizer) -> Result<Token, ()>
+{
+    match tokenizer.ahead() {
+        None => return Err(()),
+        Some(c) => if !base_2(c) {
+            return Err(());
+        }
+    }
+
+    tokenizer.next();
+    tokenizer.string.clear();
+    tokenizer.read_while(base_2);
+    let num = std::mem::take(&mut tokenizer.string);
+
+    Ok(Token::Value(u16::from_str_radix(&num, 2).unwrap()))
+}
+
+fn octal(tokenizer: &mut Tokenizer) -> Token
+{
+    tokenizer.string.clear();
+    tokenizer.read_while(numeric);
+    let num = std::mem::take(&mut tokenizer.string);
+    Token::Value(u16::from_str_radix(&num, 8).unwrap())
+}
+
+fn hex(tokenizer: &mut Tokenizer) -> Result<Token, ()>
+{
+    match tokenizer.ahead() {
+        None => return Err(()),
+        Some(c) => if !alpha(c) && !numeric(c) {
+            return Err(());
+        }
+    }
+
+    tokenizer.next();
+    tokenizer.string.clear();
+    tokenizer.read_while(|c| alpha(c) || numeric(c));
+    let num = std::mem::take(&mut tokenizer.string);
+
+    Ok(Token::Value(u16::from_str_radix(&num, 16).unwrap()))
+}
+
 fn num(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 {
     tokenizer.read_while(|c| numeric(c));
@@ -366,6 +408,25 @@ pub fn scan(input: &str) -> Result<Vec<Token>, ()>
                 tokens.push(token);
             },
 
+            '0' => {
+                    tokens.push(if let Some(c) = tokenizer.ahead() {
+                        match c {
+                            '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9' => octal(&mut tokenizer),
+                            'b' => {
+                                tokenizer.next();
+                                binary(&mut tokenizer)?
+                            },
+                            'x' => {
+                                tokenizer.next();
+                                hex(&mut tokenizer)?
+                            },
+                            _ => Token::Value(0)
+                        }
+                    } else {
+                        Token::Value(0)
+                    });
+            },
+
             _ => {
                 if alpha(c) || c == '_' {
                     let token = ident(&mut tokenizer)?;
@@ -394,7 +455,7 @@ mod tests {
     {
         let input = r#"
             _start:
-                ld a, 5
+                ld a, 0x05
         "#;
 
         let tokens = scan(input).unwrap();
@@ -405,7 +466,7 @@ mod tests {
     fn byte()
     {
         let input = r#"
-            .byte 5
+            .byte 0x05
         "#;
 
         let tokens = scan(input).unwrap();
