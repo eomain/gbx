@@ -383,6 +383,7 @@ pub fn scan(input: &str) -> Result<Vec<Token>, ()>
     Ok(tokens)
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

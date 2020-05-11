@@ -45,6 +45,7 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::token;

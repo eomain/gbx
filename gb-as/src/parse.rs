@@ -209,6 +209,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
     Ok(program)
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::token;
