@@ -88,7 +88,8 @@ impl From<Instruction> for Unit {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
-    Byte(Option<u8>)
+    Byte(Option<u8>),
+    Fill(usize, u8)
 }
 
 impl From<Directive> for Unit {
@@ -145,6 +146,20 @@ fn newline(parser: &mut Parser) -> Result<(), ()>
     Ok(())
 }
 
+fn byte(parser: &mut Parser) -> Result<u8, ()>
+{
+    match parser.ahead() {
+        Some(Token::Value(v)) => {
+            if v > std::u8::MAX as u16 {
+                return Err(())
+            }
+            parser.next();
+            Ok(v as u8)
+        },
+        _ => Err(())
+    }
+}
+
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
 {
     let mut program = Vec::new();
@@ -185,16 +200,23 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                 use token::Directive as Direc;
                 match d {
                     Direc::Byte => {
-                        match parser.ahead() {
-                            Some(Token::Value(v)) => {
-                                if v > std::u8::MAX as u16 {
-                                    return Err(())
-                                }
-                                program.push(Directive::Byte(Some(v as u8)).into());
-                                parser.next();
-                            },
-                            _ => program.push(Directive::Byte(None).into())
+                        match byte(&mut parser) {
+                            Err(_) => program.push(Directive::Byte(None).into()),
+                            Ok(byte) => program.push(Directive::Byte(Some(byte)).into())
                         }
+                    },
+                    Direc::Fill => {
+                        let size = match parser.ahead() {
+                            Some(Token::Value(v)) => {
+                                parser.next();
+                                v as usize
+                            },
+                            _ => return Err(())
+                        };
+
+                        let byte = byte(&mut parser)?;
+
+                        program.push(Directive::Fill(size, byte).into());
                     },
                     _ => ()
                 }

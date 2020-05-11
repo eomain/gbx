@@ -130,6 +130,7 @@ impl From<Operation> for Token {
 pub enum Directive {
     Byte,
     Data,
+    Fill,
     Text
 }
 
@@ -317,6 +318,7 @@ fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
     Ok(match direc.as_str() {
         ".byte" => Byte.into(),
         ".data" => Data.into(),
+        ".fill" => Fill.into(),
         ".text" => Text.into(),
         _ => return Err(())
     })

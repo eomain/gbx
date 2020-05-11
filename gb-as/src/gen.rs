@@ -35,6 +35,10 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
                     Byte(b) => {
                         let byte = b.unwrap_or(0x00);
                         w.write(&[byte])?;
+                    },
+                    Fill(size, byte) => {
+                        let bytes = vec![*byte; *size];
+                        w.write(bytes.as_slice())?;
                     }
                 }
             },
