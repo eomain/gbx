@@ -32,9 +32,11 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
             Unit::Directive(d) => {
                 use Directive::*;
                 match d {
-                    Byte(b) => {
-                        let byte = b.unwrap_or(0x00);
-                        w.write(&[byte])?;
+                    Byte(bytes) => {
+                        match bytes {
+                            None => { w.write(&[0x00])?; },
+                            Some(bytes) => { w.write(bytes)?; }
+                        }
                     },
                     Fill(size, byte) => {
                         const MAX: usize = 0xFF;
@@ -80,6 +82,8 @@ mod tests {
                 ; halt the cpu
                 halt
             .data
+            xyz:
+                .byte 0x00, 0x00, 0x00
             x:
                 .byte 1
             y:

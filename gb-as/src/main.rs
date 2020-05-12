@@ -58,7 +58,7 @@ fn assemble(source: &str, output: &str, format: Format)
             return
         },
         Ok(_) => ()
-    };
+    }
 }
 
 fn main()

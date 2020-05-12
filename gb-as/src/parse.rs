@@ -88,7 +88,7 @@ impl From<Instruction> for Unit {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
-    Byte(Option<u8>),
+    Byte(Option<Vec<u8>>),
     Fill(usize, u8)
 }
 
@@ -214,7 +214,14 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                     Direc::Byte => {
                         match byte(&mut parser) {
                             Err(_) => program.push(Directive::Byte(None).into()),
-                            Ok(byte) => program.push(Directive::Byte(Some(byte)).into())
+                            Ok(b) => {
+                                let mut bytes = vec![b];
+                                while let Ok(_) = comma(&mut parser) {
+                                    let byte = byte(&mut parser)?;
+                                    bytes.push(byte);
+                                }
+                                program.push(Directive::Byte(Some(bytes)).into());
+                            }
                         }
                     },
                     Direc::Fill => {
