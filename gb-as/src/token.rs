@@ -5,6 +5,8 @@ pub enum Token {
     Id(String),
     /// A value
     Value(u16),
+    /// A string literal
+    String(String),
     /// An 8-bit register
     Register(Register),
     /// A 16-bit register
@@ -128,9 +130,12 @@ impl From<Operation> for Token {
 /// The assembler directives
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
+    Ascii,
+    Asciz,
     Byte,
     Data,
     Fill,
+    Org,
     Text
 }
 
@@ -285,6 +290,23 @@ fn num(tokenizer: &mut Tokenizer) -> Result<Token, ()>
     }
 }
 
+fn string(tokenizer: &mut Tokenizer) -> Result<Token, ()>
+{
+    if Some('\"') != tokenizer.ahead() {
+        tokenizer.next();
+        tokenizer.read_while(|c| c != '"');
+    }
+
+    let s = std::mem::take(&mut tokenizer.string);
+
+    if Some('\"') != tokenizer.ahead() {
+        return Err(());
+    }
+    tokenizer.next();
+    Ok(Token::String(s))
+}
+
+
 fn ident(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 {
     tokenizer.read_while(|c| alpha(c) || c == '_');
@@ -358,10 +380,13 @@ fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 
     use Directive::*;
     Ok(match direc.as_str() {
-        ".byte" => Byte.into(),
-        ".data" => Data.into(),
-        ".fill" => Fill.into(),
-        ".text" => Text.into(),
+        ".ascii" => Ascii.into(),
+        ".asciz" => Asciz.into(),
+        ".byte"  => Byte.into(),
+        ".data"  => Data.into(),
+        ".fill"  => Fill.into(),
+        ".org"   => Org.into(),
+        ".text"  => Text.into(),
         _ => return Err(())
     })
 }
@@ -427,6 +452,10 @@ pub fn scan(input: &str) -> Result<Vec<Token>, ()>
                     });
             },
 
+            '"' => {
+                tokens.push(string(&mut tokenizer)?);
+            },
+
             _ => {
                 if alpha(c) || c == '_' {
                     let token = ident(&mut tokenizer)?;
@@ -467,6 +496,17 @@ mod tests {
     {
         let input = r#"
             .byte 0x05
+        "#;
+
+        let tokens = scan(input).unwrap();
+        println!("{:?}", tokens);
+    }
+
+    #[test]
+    fn ascii()
+    {
+        let input = r#"
+            .asciz "hello world"
         "#;
 
         let tokens = scan(input).unwrap();

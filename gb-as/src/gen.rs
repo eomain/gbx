@@ -181,6 +181,13 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
             Unit::Directive(d) => {
                 use Directive::*;
                 match d {
+                    Ascii(string) => {
+                        w.write(&string)?;
+                    },
+                    Asciz(string) => {
+                        w.write(&string)?;
+                        w.write(&[0x00]);
+                    },
                     Byte(bytes) => {
                         match bytes {
                             None => { w.write(&[0x00])?; },
@@ -237,6 +244,8 @@ mod tests {
                 .byte 1
             y:
                 .byte 1
+            msg:
+                .asciz "hello world"
         "#).unwrap();
 
         let program = parse::parse(input).unwrap();

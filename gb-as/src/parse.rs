@@ -95,6 +95,8 @@ impl From<Instruction> for Unit {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
+    Ascii(Vec<u8>),
+    Asciz(Vec<u8>),
     Byte(Option<Vec<u8>>),
     Fill(usize, u8)
 }
@@ -167,6 +169,17 @@ fn byte(parser: &mut Parser) -> Result<u8, ()>
     }
 }
 
+fn string(parser: &mut Parser) -> Result<Vec<u8>, ()>
+{
+    match parser.ahead() {
+        Some(Token::String(s)) => {
+            parser.next();
+            Ok(s.bytes().collect())
+        },
+        _ => Err(())
+    }
+}
+
 #[inline]
 fn comma(parser: &mut Parser) -> Result<(), ()>
 {
@@ -218,6 +231,14 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
             Token::Directive(d) => {
                 use token::Directive as Direc;
                 match d {
+                    Direc::Ascii => {
+                        let bytes = string(&mut parser)?;
+                        program.push(Directive::Ascii(bytes).into());
+                    },
+                    Direc::Asciz => {
+                        let bytes = string(&mut parser)?;
+                        program.push(Directive::Asciz(bytes).into());
+                    },
                     Direc::Byte => {
                         match byte(&mut parser) {
                             Err(_) => program.push(Directive::Byte(None).into()),
