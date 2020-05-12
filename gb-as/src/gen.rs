@@ -181,7 +181,7 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
             Unit::Directive(d) => {
                 use Directive::*;
                 match d {
-                    Ascii(string) => {
+                    Ascii(string) | Utf8(string) => {
                         w.write(&string)?;
                     },
                     Asciz(string) => {
@@ -209,9 +209,6 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
                             let bytes = vec![*byte; rem];
                             w.write(&bytes)?;
                         }
-                    },
-                    Utf8(string) => {
-                        w.write(&string);
                     }
                 }
             },
