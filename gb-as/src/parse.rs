@@ -169,10 +169,13 @@ fn byte(parser: &mut Parser) -> Result<u8, ()>
     }
 }
 
-fn string(parser: &mut Parser) -> Result<Vec<u8>, ()>
+fn ascii(parser: &mut Parser) -> Result<Vec<u8>, ()>
 {
     match parser.ahead() {
         Some(Token::String(s)) => {
+            if !s.is_ascii() {
+                return Err(());
+            }
             parser.next();
             Ok(s.bytes().collect())
         },
@@ -232,11 +235,11 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                 use token::Directive as Direc;
                 match d {
                     Direc::Ascii => {
-                        let bytes = string(&mut parser)?;
+                        let bytes = ascii(&mut parser)?;
                         program.push(Directive::Ascii(bytes).into());
                     },
                     Direc::Asciz => {
-                        let bytes = string(&mut parser)?;
+                        let bytes = ascii(&mut parser)?;
                         program.push(Directive::Asciz(bytes).into());
                     },
                     Direc::Byte => {
