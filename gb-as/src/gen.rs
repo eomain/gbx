@@ -254,4 +254,23 @@ mod tests {
         write(&mut bytes, &program);
         println!("{:?}", bytes);
     }
+
+    #[test]
+    fn opcode()
+    {
+        let input = token::scan(r#"
+            .text
+            _start:
+                push af
+                and b
+                or a
+                halt
+                nop
+        "#).unwrap();
+
+        let program = parse::parse(input).unwrap();
+        let mut bytes: Vec<u8> = Vec::new();
+        write(&mut bytes, &program);
+        println!("{:?}", bytes);
+    }
 }

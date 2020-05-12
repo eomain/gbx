@@ -207,6 +207,36 @@ fn comma(parser: &mut Parser) -> Result<(), ()>
     }
 }
 
+fn reg16_not_sp_pc(parser: &mut Parser) -> Result<Operand, ()>
+{
+    match parser.ahead() {
+        Some(Token::Register16(Register16::SP)) |
+        Some(Token::Register16(Register16::PC)) => {
+            Err(())
+        },
+        Some(Token::Register16(r)) => {
+            parser.next();
+            Ok(Operand::Register16(r))
+        },
+        _ => Err(())
+    }
+}
+
+fn reg_any_reg16_hl(parser: &mut Parser) -> Result<Operand, ()>
+{
+    match parser.ahead() {
+        Some(Token::Register(r)) => {
+            parser.next();
+            Ok(Operand::Register(r))
+        },
+        Some(Token::Register16(Register16::HL)) => {
+            parser.next();
+            Ok(Operand::Indirect16(Register16::HL))
+        },
+        _ => return Err(())
+    }
+}
+
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
 {
     let mut program = Vec::new();
@@ -226,19 +256,26 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
             Token::Operation(o) => {
                 use Operation::*;
                 match o {
-                    Ccf => program.push(Instruction::Ccf.into()),
-                    Cpl => program.push(Instruction::Cpl.into()),
-                    Daa => program.push(Instruction::Daa.into()),
-                    Di => program.push(Instruction::Di.into()),
-                    Ei => program.push(Instruction::Ei.into()),
+                    And  => program.push(Instruction::And(reg_any_reg16_hl(&mut parser)?).into()),
+                    Ccf  => program.push(Instruction::Ccf.into()),
+                    Cpl  => program.push(Instruction::Cpl.into()),
+                    Daa  => program.push(Instruction::Daa.into()),
+                    Dec  => program.push(Instruction::Dec(reg_any_reg16_hl(&mut parser)?).into()),
+                    Di   => program.push(Instruction::Di.into()),
+                    Ei   => program.push(Instruction::Ei.into()),
                     Halt => program.push(Instruction::Halt.into()),
-                    Nop => program.push(Instruction::Nop.into()),
+                    Inc  => program.push(Instruction::Inc(reg_any_reg16_hl(&mut parser)?).into()),
+                    Nop  => program.push(Instruction::Nop.into()),
+                    Or   => program.push(Instruction::Or(reg_any_reg16_hl(&mut parser)?).into()),
+                    Pop  => program.push(Instruction::Pop(reg16_not_sp_pc(&mut parser)?).into()),
+                    Push => program.push(Instruction::Push(reg16_not_sp_pc(&mut parser)?).into()),
                     Reti => program.push(Instruction::Reti.into()),
                     Rlca => program.push(Instruction::Rlca.into()),
-                    Rra => program.push(Instruction::Rra.into()),
+                    Rra  => program.push(Instruction::Rra.into()),
                     Rrca => program.push(Instruction::Rrca.into()),
-                    Scf => program.push(Instruction::Scf.into()),
+                    Scf  => program.push(Instruction::Scf.into()),
                     Stop => program.push(Instruction::Stop.into()),
+                    Xor  => program.push(Instruction::Xor(reg_any_reg16_hl(&mut parser)?).into()),
                     _ => ()
                 }
                 newline(&mut parser)?;
