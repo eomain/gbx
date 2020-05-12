@@ -136,7 +136,8 @@ pub enum Directive {
     Data,
     Fill,
     Org,
-    Text
+    Text,
+    Utf8
 }
 
 impl From<Directive> for Token {
@@ -375,7 +376,7 @@ fn ident(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 
 fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 {
-    tokenizer.read_while(|c| alpha(c) || c == '_');
+    tokenizer.read_while(|c| alpha(c) || numeric(c) || c == '_');
     let direc = std::mem::take(&mut tokenizer.string);
 
     use Directive::*;
@@ -387,6 +388,7 @@ fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
         ".fill"  => Fill.into(),
         ".org"   => Org.into(),
         ".text"  => Text.into(),
+        ".utf8"  => Utf8.into(),
         _ => return Err(())
     })
 }

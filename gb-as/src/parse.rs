@@ -98,7 +98,8 @@ pub enum Directive {
     Ascii(Vec<u8>),
     Asciz(Vec<u8>),
     Byte(Option<Vec<u8>>),
-    Fill(usize, u8)
+    Fill(usize, u8),
+    Utf8(Vec<u8>)
 }
 
 impl From<Directive> for Unit {
@@ -176,6 +177,17 @@ fn ascii(parser: &mut Parser) -> Result<Vec<u8>, ()>
             if !s.is_ascii() {
                 return Err(());
             }
+            parser.next();
+            Ok(s.bytes().collect())
+        },
+        _ => Err(())
+    }
+}
+
+fn utf8(parser: &mut Parser) -> Result<Vec<u8>, ()>
+{
+    match parser.ahead() {
+        Some(Token::String(s)) => {
             parser.next();
             Ok(s.bytes().collect())
         },
@@ -269,6 +281,10 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                         let byte = byte(&mut parser)?;
 
                         program.push(Directive::Fill(size, byte).into());
+                    },
+                    Direc::Utf8 => {
+                        let bytes = utf8(&mut parser)?;
+                        program.push(Directive::Utf8(bytes).into());
                     },
                     _ => ()
                 }

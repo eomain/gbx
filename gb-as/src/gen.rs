@@ -209,6 +209,9 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
                             let bytes = vec![*byte; rem];
                             w.write(&bytes)?;
                         }
+                    },
+                    Utf8(string) => {
+                        w.write(&string);
                     }
                 }
             },
@@ -246,6 +249,7 @@ mod tests {
                 .byte 1
             msg:
                 .asciz "hello world"
+                .utf8 "世界"
         "#).unwrap();
 
         let program = parse::parse(input).unwrap();
