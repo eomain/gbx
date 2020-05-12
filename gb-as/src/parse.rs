@@ -2,8 +2,12 @@
 use crate::token;
 use token::{
     Token,
-    Register,
     Operation
+};
+
+pub use token::{
+    Register,
+    Register16
 };
 
 /// Single component of the program
@@ -22,7 +26,10 @@ pub type Program = Vec<Unit>;
 pub enum Operand {
     Immediate8(u8),
     Immediate16(u16),
-    Register(Register)
+    Register(Register),
+    Register16(Register16),
+    Indirect(Register),
+    Indirect16(Register16)
 }
 
 /// For instructions with variable a
