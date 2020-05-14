@@ -15,6 +15,8 @@ pub enum Token {
     Operation(Operation),
     /// Assembler directive
     Directive(Directive),
+    /// Current location
+    Location,
     /// A comma separator
     Comma,
     /// A colon
@@ -389,7 +391,8 @@ fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
         ".org"   => Org.into(),
         ".text"  => Text.into(),
         ".utf8"  => Utf8.into(),
-        _ => return Err(())
+        "." => return Err(()),
+        _ => Token::Id(direc)
     })
 }
 
@@ -509,6 +512,18 @@ mod tests {
     {
         let input = r#"
             .asciz "hello world"
+        "#;
+
+        let tokens = scan(input).unwrap();
+        println!("{:?}", tokens);
+    }
+
+    #[test]
+    fn label()
+    {
+        let input = r#"
+            foo:
+            .loop:
         "#;
 
         let tokens = scan(input).unwrap();
