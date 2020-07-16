@@ -7,7 +7,8 @@ use token::{
 
 pub use token::{
     Register,
-    Register16
+    Register16,
+    FlagRegister
 };
 
 /// Single component of the program
@@ -29,15 +30,8 @@ pub enum Operand {
     Register(Register),
     Register16(Register16),
     Indirect(Register),
-    Indirect16(Register16)
-}
-
-/// For instructions with variable a
-/// number of operands.
-#[derive(Clone, Debug, PartialEq)]
-pub enum MulOperand {
-    Single(Operand),
-    Double(Operand, Operand)
+    Indirect16(Register16),
+    Flag(FlagRegister)
 }
 
 /// All machine instructions.
@@ -46,6 +40,8 @@ pub enum Instruction {
     Add(Operand, Operand),
     And(Operand),
     Bit(Operand, Operand),
+    Call_1(Operand),
+    Call_2(Operand, Operand),
     Ccf,
     Cp(Operand),
     Cpl,
@@ -55,14 +51,17 @@ pub enum Instruction {
     Ei,
     Halt,
     Inc(Operand),
-    Jp(MulOperand),
-    Jr(MulOperand),
+    Jp_1(Operand),
+    Jp_2(Operand, Operand),
+    Jr_1(Operand),
+    Jr_2(Operand, Operand),
     Ld(Operand, Operand),
     Nop,
     Or(Operand),
     Pop(Operand),
     Push(Operand),
-    Ret(Operand),
+    Ret,
+    Ret_1(Operand),
     Reti,
     Res(Operand, Operand),
     Rl(Operand),

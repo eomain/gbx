@@ -11,6 +11,8 @@ pub enum Token {
     Register(Register),
     /// A 16-bit register
     Register16(Register16),
+    /// A flag register
+    Flag(FlagRegister),
     /// Name of machine instruction
     Operation(Operation),
     /// Assembler directive
@@ -44,7 +46,7 @@ impl From<Register> for Token {
     }
 }
 
-/// Their are two 16-bit registers, the SP and
+/// There are two 16-bit registers, the SP and
 /// the PC. However the 8-bits registers can also
 /// be paired as 16-bit ones.
 #[derive(Clone, Debug, PartialEq)]
@@ -69,12 +71,23 @@ impl From<Register16> for Token {
 pub enum FlagRegister {
     /// Zero flag
     Z,
+    /// Not zero
+    NZ,
     /// Subtract flag
     N,
     /// Half-carry flag
-    H,
+    HC,
     /// Carry flag
-    C
+    CR,
+    /// Not carry
+    NC
+}
+
+impl From<FlagRegister> for Token {
+    fn from(f: FlagRegister) -> Self
+    {
+        Token::Flag(f)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -317,6 +330,7 @@ fn ident(tokenizer: &mut Tokenizer) -> Result<Token, ()>
 
     use Register::*;
     use Register16::*;
+    use FlagRegister::*;
     use Operation::*;
     Ok(match ident.as_str() {
         "a" => A.into(),
@@ -326,6 +340,12 @@ fn ident(tokenizer: &mut Tokenizer) -> Result<Token, ()>
         "e" => E.into(),
         "h" => H.into(),
         "l" => L.into(),
+        "z" => Z.into(),
+        "n" => N.into(),
+        "hc" => HC.into(),
+        "cr" => CR.into(),
+        "nz" => NZ.into(),
+        "nc" => NC.into(),
         "af" => AF.into(),
         "bc" => BC.into(),
         "de" => DE.into(),
