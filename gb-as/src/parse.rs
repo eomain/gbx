@@ -1,4 +1,5 @@
 
+use std::collections::HashMap;
 use crate::token;
 use token::{
     Token,
@@ -11,15 +12,51 @@ pub use token::{
     FlagRegister
 };
 
+trait Bytes {
+    fn bytes(&self) -> u16;
+}
+
 /// Single component of the program
 #[derive(Clone, Debug, PartialEq)]
 pub enum Unit {
-    Label(String),
     Instruction(Instruction),
     Directive(Directive)
 }
 
-pub type Program = Vec<Unit>;
+impl Unit {
+    fn bytes(&self, loc: u16) -> u16
+    {
+        use Unit::*;
+        match self {
+            Instruction(i) => i.bytes(),
+            Directive(d) => d.bytes(loc),
+            _ => 0,
+        }
+    }
+}
+
+pub struct Program {
+    pub units: Vec<Unit>,
+    location: u16
+}
+
+impl Program {
+    fn new() -> Self
+    {
+        Self {
+            units: Vec::new(),
+            location: 0
+        }
+    }
+
+    fn push(&mut self, unit: Unit)
+    {
+        self.location += unit.bytes(self.location);
+        self.units.push(unit);
+    }
+}
+
+pub type Table = HashMap<String, u16>;
 
 /// The Operands are either an 8-bit (or 16-bit)
 /// immediate value or a register.
@@ -31,7 +68,20 @@ pub enum Operand {
     Register16(Register16),
     Indirect(Register),
     Indirect16(Register16),
-    Flag(FlagRegister)
+    Flag(FlagRegister),
+    Symbol(String),
+}
+
+impl Bytes for Operand {
+    fn bytes(&self) -> u16
+    {
+        use Operand::*;
+        match self {
+            Immediate8(_) => 1,
+            Immediate16(_) | Symbol(_) => 2,
+            _ => 0,
+        }
+    }
 }
 
 /// All machine instructions.
@@ -92,12 +142,34 @@ impl From<Instruction> for Unit {
     }
 }
 
+impl Bytes for Instruction {
+    fn bytes(&self) -> u16
+    {
+        use Instruction::*;
+        match self {
+            Add(a, b) | Bit(a, b) | Call_2(a, b) |
+            Jp_2(a, b) | Jr_2(a, b) | Ld(a, b) |
+            Res(a, b) | Sbc(a, b) | Set(a, b) => 1 + a.bytes() + b.bytes(),
+            And(a) | Call_1(a) | Cp(a) |
+            Dec(a) | Inc(a) | Jp_1(a) | Jr_1(a) |
+            Or(a) | Pop(a) | Push(a) |
+            Ret_1(a) | Rl(a) | Rla(a) |
+            Rr(a) | Rrc(a) | Rst(a) |
+            Sla(a) | Sra(a) | Srl(a) |
+            Sub(a) | Swap(a) | Xor(a) => 1 + a.bytes(),
+            Stop => 2,
+            _ => 1,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
     Ascii(Vec<u8>),
     Asciz(Vec<u8>),
     Byte(Option<Vec<u8>>),
     Fill(usize, u8),
+    Org(usize, u8),
     Utf8(Vec<u8>)
 }
 
@@ -108,9 +180,25 @@ impl From<Directive> for Unit {
     }
 }
 
+impl Directive {
+    fn bytes(&self, loc: u16) -> u16
+    {
+        use Directive::*;
+        match self {
+            Ascii(v) | Asciz(v) | Utf8(v) => v.len() as u16,
+            Byte(o) => match o {
+                None => 0,
+                Some(v) => v.len() as u16
+            },
+            Fill(size, _) | Org(size, _) => *size as u16
+        }
+    }
+}
+
 struct Parser {
     pos: usize,
-    tokens: Vec<Token>
+    tokens: Vec<Token>,
+    symbols: Table
 }
 
 impl Parser {
@@ -118,7 +206,8 @@ impl Parser {
     {
         Self {
             pos: 0,
-            tokens
+            tokens,
+            symbols: HashMap::new()
         }
     }
 
@@ -167,6 +256,21 @@ fn byte(parser: &mut Parser) -> Result<u8, ()>
         },
         _ => Err(())
     }
+}
+
+fn word(parser: &mut Parser) -> Result<Operand, ()>
+{
+    Ok(match parser.ahead() {
+        Some(Token::Value(v)) => {
+            parser.next();
+            Operand::Immediate16(v)
+        },
+        Some(Token::Id(s)) => {
+            parser.next();
+            Operand::Symbol(s.into())
+        },
+        _ => return Err(())
+    })
 }
 
 fn ascii(parser: &mut Parser) -> Result<Vec<u8>, ()>
@@ -236,9 +340,85 @@ fn reg_any_reg16_hl(parser: &mut Parser) -> Result<Operand, ()>
     }
 }
 
+fn value_byte(parser: &mut Parser) -> Result<(usize, u8), ()>
+{
+    let size = match parser.ahead() {
+        Some(Token::Value(v)) => {
+            parser.next();
+            v as usize
+        },
+        _ => return Err(())
+    };
+
+    comma(parser)?;
+
+    let byte = byte(parser)?;
+    Ok((size, byte))
+}
+
+fn call(parser: &mut Parser) -> Result<Instruction, ()>
+{
+    let operand = word(parser)?;
+    Ok(Instruction::Call_1(operand))
+}
+
+fn jp(parser: &mut Parser) -> Result<Instruction, ()>
+{
+    let operand = word(parser)?;
+    Ok(Instruction::Jp_1(operand))
+}
+
+fn ret(parser: &mut Parser) -> Result<Instruction, ()>
+{
+    match parser.ahead() {
+        Some(Token::Newline) => Ok(Instruction::Ret),
+        Some(Token::Flag(f)) => {
+            use FlagRegister::*;
+            match f {
+                Z | NZ | CR | NC => {
+                    parser.next();
+                    Ok(Instruction::Ret_1(Operand::Flag(f)))
+                },
+                _ => Err(())
+            }
+        },
+        _ => Err(())
+    }
+}
+
+fn ref_operand(parser: &mut Parser, name: &str) -> Operand
+{
+    match parser.symbols.get(name) {
+        None => {
+            // TODO
+            unreachable!();
+        },
+        Some(u) => {
+            Operand::Immediate16(*u)
+        }
+    }
+}
+
+fn ref_labels(parser: &mut Parser, program: &mut Program)
+{
+    for u in program.units.iter_mut() {
+        match u {
+            Unit::Instruction(i) => {
+                use Instruction::*;
+                match i {
+                    Call_1(Operand::Symbol(s)) => { *i = Call_1(ref_operand(parser, s)); },
+                    Jp_1(Operand::Symbol(s)) => { *i = Jp_1(ref_operand(parser, s)); },
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
+    }
+}
+
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
 {
-    let mut program = Vec::new();
+    let mut program = Program::new();
     let mut parser = Parser::new(tokens);
 
     while let Some(token) = parser.look() {
@@ -246,8 +426,10 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
             Token::Id(s) => {
                 match parser.ahead() {
                     Some(Token::Colon) => {
-                        program.push(Unit::Label(s));
+                        parser.symbols.insert(s.to_string(), program.location);
                         parser.next();
+                        parser.next();
+                        continue;
                     },
                     _ => return Err(())
                 }
@@ -256,6 +438,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                 use Operation::*;
                 match o {
                     And  => program.push(Instruction::And(reg_any_reg16_hl(&mut parser)?).into()),
+                    Call => program.push(call(&mut parser)?.into()),
                     Ccf  => program.push(Instruction::Ccf.into()),
                     Cpl  => program.push(Instruction::Cpl.into()),
                     Daa  => program.push(Instruction::Daa.into()),
@@ -264,10 +447,12 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                     Ei   => program.push(Instruction::Ei.into()),
                     Halt => program.push(Instruction::Halt.into()),
                     Inc  => program.push(Instruction::Inc(reg_any_reg16_hl(&mut parser)?).into()),
+                    Jp   => program.push(jp(&mut parser)?.into()),
                     Nop  => program.push(Instruction::Nop.into()),
                     Or   => program.push(Instruction::Or(reg_any_reg16_hl(&mut parser)?).into()),
                     Pop  => program.push(Instruction::Pop(reg16_not_sp_pc(&mut parser)?).into()),
                     Push => program.push(Instruction::Push(reg16_not_sp_pc(&mut parser)?).into()),
+                    Ret  => program.push(ret(&mut parser)?.into()),
                     Reti => program.push(Instruction::Reti.into()),
                     Rlca => program.push(Instruction::Rlca.into()),
                     Rra  => program.push(Instruction::Rra.into()),
@@ -304,19 +489,16 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                         }
                     },
                     Direc::Fill => {
-                        let size = match parser.ahead() {
-                            Some(Token::Value(v)) => {
-                                parser.next();
-                                v as usize
-                            },
-                            _ => return Err(())
-                        };
-
-                        comma(&mut parser)?;
-
-                        let byte = byte(&mut parser)?;
-
+                        let (size, byte) = value_byte(&mut parser)?;
                         program.push(Directive::Fill(size, byte).into());
+                    },
+                    Direc::Org => {
+                        let (pos, byte) = value_byte(&mut parser)?;
+                        if pos >= program.location as usize {
+                            program.push(Directive::Org((pos - program.location as usize), byte).into());
+                        } else {
+                            return Err(());
+                        }
                     },
                     Direc::Utf8 => {
                         let bytes = utf8(&mut parser)?;
@@ -326,12 +508,17 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                 }
                 newline(&mut parser)?;
             },
-            Token::Newline => (),
+            Token::Newline => {
+                parser.next();
+                continue;
+            },
             _ => return Err(())
         }
+
         parser.next();
     }
 
+    ref_labels(&mut parser, &mut program);
     Ok(program)
 }
 

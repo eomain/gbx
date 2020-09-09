@@ -10,7 +10,7 @@ use std::{
     fs::File
 };
 use clap::{
-    App, Arg, ArgMatches,
+    App, AppSettings, Arg, ArgMatches,
     SubCommand as Command
 };
 
@@ -66,6 +66,7 @@ fn main()
     let mut app = App::new("gb-as")
         .about("Game Boy assembler")
         .version(env!("CARGO_PKG_VERSION"))
+        .setting(AppSettings::ArgRequiredElseHelp)
         .arg(Arg::with_name("INPUT")
                  .required(true)
                  .index(1)

@@ -306,10 +306,29 @@ fn xor_write<W>(w: &mut W, operand: &Operand) -> Result<(), std::io::Error>
     Ok(())
 }
 
+fn write_ntimes<W>(w: &mut W, count: usize, byte: u8) -> Result<usize, std::io::Error>
+    where W: std::io::Write
+{
+    const MAX: usize = 0xFF;
+    if count <= MAX {
+        let bytes = vec![byte; count];
+        w.write(bytes.as_slice())
+    } else {
+        let bytes = vec![byte; MAX];
+        let times = count / MAX;
+        let rem = count % MAX;
+        for n in 1..=times {
+            w.write(&bytes)?;
+        }
+        let bytes = vec![byte; rem];
+        w.write(&bytes)
+    }
+}
+
 pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
     where W: std::io::Write
 {
-    for unit in program {
+    for unit in &program.units {
         match unit {
             Unit::Instruction(i) => {
                 use Instruction::*;
@@ -359,21 +378,8 @@ pub fn write<W>(w: &mut W, program: &Program) -> Result<(), std::io::Error>
                             Some(bytes) => { w.write(bytes)?; }
                         }
                     },
-                    Fill(size, byte) => {
-                        const MAX: usize = 0xFF;
-                        if *size <= MAX {
-                            let bytes = vec![*byte; *size];
-                            w.write(bytes.as_slice())?;
-                        } else {
-                            let bytes = vec![*byte; MAX];
-                            let times = size / MAX;
-                            let rem = size % MAX;
-                            for n in 1..=times {
-                                w.write(&bytes)?;
-                            }
-                            let bytes = vec![*byte; rem];
-                            w.write(&bytes)?;
-                        }
+                    Fill(size, byte) | Org(size, byte) => {
+                        write_ntimes(w, *size, *byte)?;
                     }
                 }
             },
