@@ -231,6 +231,15 @@ impl Parser {
             Some(token) => Some(token.clone())
         }
     }
+
+    fn include(&mut self, mut tokens: Vec<Token>, rewind: usize)
+    {
+        let mut end = self.tokens.split_off(self.pos + 1);
+        self.tokens.split_off(self.pos - 1);
+        self.tokens.append(&mut tokens);
+        self.tokens.append(&mut end);
+        self.pos -= rewind;
+    }
 }
 
 /// A newline following an instruction
@@ -426,6 +435,10 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
             Token::Id(s) => {
                 match parser.ahead() {
                     Some(Token::Colon) => {
+                        if parser.symbols.contains_key(&s) {
+                            // TODO
+                            return Err(());
+                        }
                         parser.symbols.insert(s.to_string(), program.location);
                         parser.next();
                         parser.next();
@@ -498,6 +511,17 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                             program.push(Directive::Org((pos - program.location as usize), byte).into());
                         } else {
                             return Err(());
+                        }
+                    },
+                    Direc::Use => {
+                        let name = match String::from_utf8(utf8(&mut parser)?) {
+                            Err(_) => return Err(()),
+                            Ok(s) => s
+                        };
+
+                        if let Ok(tokens) = crate::read_file_token(&name) {
+                            parser.include(tokens, 1);
+                            continue;
                         }
                     },
                     Direc::Utf8 => {

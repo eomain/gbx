@@ -21,18 +21,40 @@ pub enum Format {
     Bin
 }
 
-fn assemble(source: &str, output: &str, format: Format)
+fn read_file(name: &str) -> Result<String, std::io::Error>
 {
-    let mut f = match File::open(source) {
-        Err(e) => {
-            eprintln!("error: {}: {}", source, e);
-            return
-        },
+    let mut f = match File::open(name) {
+        Err(e) => return Err((e)),
         Ok(f) => f
     };
 
     let mut input = String::new();
     f.read_to_string(&mut input);
+    Ok(input)
+}
+
+fn read_file_token(name: &str) -> Result<Vec<token::Token>, ()>
+{
+    let mut input = match read_file(name) {
+        Err(e) => return Err(()),
+        Ok(input) => input
+    };
+
+    match token::scan(&input) {
+        Err(_) => Err(()),
+        Ok(tokens) => Ok(tokens)
+    }
+}
+
+fn assemble(source: &str, output: &str, format: Format)
+{
+    let mut input = match read_file(source) {
+        Err(e) => {
+            eprintln!("error: {}: {}", source, e);
+            return;
+        },
+        Ok(input) => input
+    };
 
     let tokens = match token::scan(&input) {
         Err(_) => return,
@@ -55,7 +77,7 @@ fn assemble(source: &str, output: &str, format: Format)
     match gen::write(&mut out, &program) {
         Err(e) => {
             eprintln!("error: {}: {}", output, e);
-            return
+            return;
         },
         Ok(_) => ()
     }

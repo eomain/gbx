@@ -153,6 +153,7 @@ pub enum Directive {
     Fill,
     Org,
     Text,
+    Use,
     Utf8
 }
 
@@ -412,6 +413,7 @@ fn direc(tokenizer: &mut Tokenizer) -> Result<Token, ()>
         ".fill"  => Fill.into(),
         ".org"   => Org.into(),
         ".text"  => Text.into(),
+        ".use"   => Use.into(),
         ".utf8"  => Utf8.into(),
         "." => return Err(()),
         _ => Token::Id(direc)
