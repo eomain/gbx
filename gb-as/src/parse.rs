@@ -242,6 +242,15 @@ impl Parser {
     }
 }
 
+fn id(parser: &mut Parser) -> Result<String, ()>
+{
+    parser.next();
+    match parser.look() {
+        Some(Token::Id(s)) => Ok(s.clone()),
+        _ => return Err(())
+    }
+}
+
 /// A newline following an instruction
 fn newline(parser: &mut Parser) -> Result<(), ()>
 {
@@ -511,6 +520,17 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
                             program.push(Directive::Org((pos - program.location as usize), byte).into());
                         } else {
                             return Err(());
+                        }
+                    },
+                    Direc::Set => {
+                        let symbol = id(&mut parser)?;
+                        comma(&mut parser)?;
+                        match parser.ahead() {
+                            Some(Token::Value(v)) => {
+                                parser.symbols.insert(symbol, v);
+                                parser.next();
+                            },
+                            _ => return Err(())
                         }
                     },
                     Direc::Use => {

@@ -96,24 +96,25 @@ fn main()
         .arg(Arg::with_name("output")
                  .short("o")
                  .value_name("FILE")
+                 .default_value("out.bin")
                  .help("Specify the output filename"))
         .arg(Arg::with_name("format")
                  .short("f")
                  .long("format")
                  .value_name("FORMAT")
+                 .default_value("bin")
                  .possible_values(&["bin"])
                  .takes_value(true)
                  .hide_possible_values(false)
                  .help("Output in specified format"));
 
-    let m = app.clone().get_matches();
-    let mut format = Format::Bin;
-    let input = m.value_of("INPUT").unwrap();
-    let mut output = String::from("out.gb");
-    let name = m.is_present("output");
-    if name {
-        output = m.value_of("output").unwrap().into();
-    }
+    let matches = app.get_matches();
+
+    let input = matches.value_of("INPUT").unwrap();
+    let output = matches.value_of("output").unwrap();
+    let format = match matches.value_of("format") {
+        _ => Format::Bin
+    };
 
     assemble(input, &output, format);
 }
