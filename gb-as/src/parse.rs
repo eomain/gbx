@@ -1,5 +1,11 @@
 
-use std::collections::HashMap;
+use std::{
+    path::PathBuf,
+    collections::{
+        HashMap,
+        HashSet
+    }
+};
 use crate::token;
 use token::{
     Token,
@@ -435,7 +441,7 @@ fn ref_labels(parser: &mut Parser, program: &mut Program)
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<(Program, Table), ()>
+pub fn parse(mut includes: HashSet<PathBuf>, tokens: Vec<Token>) -> Result<(Program, Table), ()>
 {
     let mut program = Program::new();
     let mut parser = Parser::new(tokens);
@@ -540,9 +546,22 @@ pub fn parse(tokens: Vec<Token>) -> Result<(Program, Table), ()>
                             Ok(s) => s
                         };
 
-                        if let Ok(tokens) = crate::read_file_token(&name) {
+                        let mut path: PathBuf = match crate::path(&name) {
+                            Err(_) => return Err(()),
+                            Ok(path) => path
+                        };
+
+                        if includes.contains(&path) {
+                            return Err(());
+                        }
+
+                        let read = crate::read_file_token(&name);
+                        includes.insert(path);
+                        if let Ok(tokens) = read {
                             parser.include(tokens, 1);
                             continue;
+                        } else {
+                            return Err(());
                         }
                     },
                     Direc::Utf8 => {

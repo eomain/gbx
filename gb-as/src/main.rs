@@ -13,7 +13,9 @@ use crate::{
 use std::{
     io::Read,
     io::Write,
-    fs::File
+    fs::File,
+    path::PathBuf,
+    collections::HashSet
 };
 use obj::{
     Text,
@@ -68,6 +70,19 @@ fn create(output: &str) -> Result<File, ()>
         },
         Ok(f) => Ok(f)
     }
+}
+
+fn path(name: &str) -> Result<PathBuf, ()>
+{
+    let mut path: PathBuf = name.into();
+    if path.is_relative() {
+        path = match std::env::current_dir() {
+            Err(_) => return Err(()),
+            Ok(path) => path
+        };
+        path.push(name);
+    }
+    Ok(path)
 }
 
 fn gen<W>(output: &str, w: &mut W, program: Program) -> Result<(), ()>
@@ -126,7 +141,15 @@ fn assemble(source: &str, output: &str, format: Format)
         Ok(tokens) => tokens
     };
 
-    let (program, table) = match parse::parse(tokens) {
+    let mut path: PathBuf = match path(source) {
+        Err(_) => return,
+        Ok(path) => path
+    };
+
+    let mut includes = HashSet::new();
+    includes.insert(path);
+
+    let (program, table) = match parse::parse(includes, tokens) {
         Err(_) => return,
         Ok((p, t)) => (p, t)
     };
@@ -144,7 +167,7 @@ fn assemble(source: &str, output: &str, format: Format)
 
 fn main()
 {
-    let mut app = App::new("gb-as")
+    let app = App::new("gb-as")
         .about("Game Boy assembler")
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::ArgRequiredElseHelp)
