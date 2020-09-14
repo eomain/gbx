@@ -1,0 +1,9 @@
+[package]
+name = "gb-obj"
+version = "0.1.0"
+authors = ["eomain"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0.116", features = ["derive"] }
+bincode = "1.3.1"

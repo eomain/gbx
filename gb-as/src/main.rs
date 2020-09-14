@@ -1,13 +1,24 @@
 
+extern crate gb_obj as obj;
 extern crate clap;
 
 mod token;
 mod parse;
 mod gen;
 
+use crate::{
+    parse::Table,
+    parse::Program
+};
 use std::{
     io::Read,
+    io::Write,
     fs::File
+};
+use obj::{
+    Text,
+    Section,
+    Library
 };
 use clap::{
     App, AppSettings, Arg, ArgMatches,
@@ -18,7 +29,9 @@ use clap::{
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Format {
     /// Raw binary output
-    Bin
+    Bin,
+    /// Library format
+    Lib
 }
 
 fn read_file(name: &str) -> Result<String, std::io::Error>
@@ -46,6 +59,58 @@ fn read_file_token(name: &str) -> Result<Vec<token::Token>, ()>
     }
 }
 
+fn create(output: &str) -> Result<File, ()>
+{
+    match File::create(output) {
+        Err(e) => {
+            eprintln!("error: {}: {}", output, e);
+            Err(())
+        },
+        Ok(f) => Ok(f)
+    }
+}
+
+fn gen<W>(output: &str, w: &mut W, program: Program) -> Result<(), ()>
+    where W: Write
+{
+    match gen::write(w, &program) {
+        Err(e) => {
+            eprintln!("error: {}: {}", output, e);
+            Err(())
+        },
+        Ok(_) => Ok(())
+    }
+}
+
+fn bin(output: &str, program: Program) -> Result<(), ()>
+{
+    let mut out = create(output)?;
+    gen(output, &mut out, program);
+    Ok(())
+}
+
+fn lib(output: &str, program: Program, table: Table) -> Result<(), ()>
+{
+    let mut bin = Vec::new();
+    gen(output, &mut bin, program);
+
+    let mut text = Text::new(bin);
+    for (sym, addr) in table.iter() {
+        text.sym(sym, *addr);
+    }
+    let sect = Section::new(text);
+    let lib = Library::new(sect);
+    let bin = match lib.write() {
+        Err(_) => return Err(()),
+        Ok(bin) => bin
+    };
+
+    let mut out = create(output)?;
+
+    out.write(&bin);
+    Ok(())
+}
+
 fn assemble(source: &str, output: &str, format: Format)
 {
     let mut input = match read_file(source) {
@@ -61,25 +126,19 @@ fn assemble(source: &str, output: &str, format: Format)
         Ok(tokens) => tokens
     };
 
-    let program = match parse::parse(tokens) {
+    let (program, table) = match parse::parse(tokens) {
         Err(_) => return,
-        Ok(program) => program
+        Ok((p, t)) => (p, t)
     };
 
-    let mut out = match File::create(output) {
-        Err(e) => {
-            eprintln!("error: {}: {}", output, e);
-            return
+    match format {
+        Format::Bin => {
+            bin(output, program);
         },
-        Ok(f) => f
-    };
 
-    match gen::write(&mut out, &program) {
-        Err(e) => {
-            eprintln!("error: {}: {}", output, e);
-            return;
-        },
-        Ok(_) => ()
+        Format::Lib => {
+            lib(output, program, table);
+        }
     }
 }
 
@@ -103,7 +162,7 @@ fn main()
                  .long("format")
                  .value_name("FORMAT")
                  .default_value("bin")
-                 .possible_values(&["bin"])
+                 .possible_values(&["bin", "lib"])
                  .takes_value(true)
                  .hide_possible_values(false)
                  .help("Output in specified format"));
@@ -113,6 +172,7 @@ fn main()
     let input = matches.value_of("INPUT").unwrap();
     let output = matches.value_of("output").unwrap();
     let format = match matches.value_of("format") {
+        Some("lib") => Format::Lib,
         _ => Format::Bin
     };
 

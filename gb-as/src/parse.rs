@@ -35,6 +35,7 @@ impl Unit {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Program {
     pub units: Vec<Unit>,
     location: u16
@@ -434,7 +435,7 @@ fn ref_labels(parser: &mut Parser, program: &mut Program)
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
+pub fn parse(tokens: Vec<Token>) -> Result<(Program, Table), ()>
 {
     let mut program = Program::new();
     let mut parser = Parser::new(tokens);
@@ -563,7 +564,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ()>
     }
 
     ref_labels(&mut parser, &mut program);
-    Ok(program)
+    Ok((program, parser.symbols))
 }
 
 #[cfg(test)]

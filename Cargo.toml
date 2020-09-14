@@ -2,5 +2,6 @@
 
 members = [
     "gb-as",
-    "gb-ld"
+    "gb-ld",
+    "gb-obj"
 ]
