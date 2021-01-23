@@ -178,13 +178,11 @@ fn main()
         .arg(Arg::with_name("output")
                  .short("o")
                  .value_name("FILE")
-                 .default_value("out.bin")
                  .help("Specify the output filename"))
         .arg(Arg::with_name("format")
                  .short("f")
                  .long("format")
                  .value_name("FORMAT")
-                 .default_value("bin")
                  .possible_values(&["bin", "lib"])
                  .takes_value(true)
                  .hide_possible_values(false)
@@ -193,7 +191,7 @@ fn main()
     let matches = app.get_matches();
 
     let input = matches.value_of("INPUT").unwrap();
-    let output = matches.value_of("output").unwrap();
+    let output = matches.value_of("output").unwrap_or("out.bin");
     let format = match matches.value_of("format") {
         Some("lib") => Format::Lib,
         _ => Format::Bin
